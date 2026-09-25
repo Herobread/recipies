@@ -1,0 +1,490 @@
+---
+const { frontmatter } = Astro.props;
+const defaultServings = frontmatter.servings || 2;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{frontmatter.title} - Kitchen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,350;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+    <style is:global>
+      :root {
+        --bg: #FAFAF8;
+        --text-primary: #191816;
+        --text-secondary: #363430;
+        --text-muted: #8A857D;
+        --border-hairline: #E2DDD5;
+        --accent: #B8533B;
+        
+        --font-serif: 'Fraunces', Georgia, serif;
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+        /* Unified alignment axis across all sections */
+        --content-indent: 1.85rem;
+      }
+
+      * { 
+        box-sizing: border-box; 
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        background-color: var(--bg);
+        color: var(--text-primary);
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+
+      body {
+        background-color: var(--bg);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        max-width: 660px;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem calc(4rem + env(safe-area-inset-bottom));
+        line-height: 1.68;
+        font-size: 0.9375rem;
+        letter-spacing: -0.012em;
+      }
+
+      /* Navigation */
+      header nav {
+        margin-bottom: 1.5rem;
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        font-weight: 450;
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+
+      .back-link:hover {
+        color: var(--accent);
+      }
+
+      /* Title & Header */
+      h1 {
+        font-family: var(--font-serif);
+        font-optical-sizing: auto;
+        font-size: clamp(2rem, 4.5vw, 2.6rem);
+        line-height: 1.15;
+        letter-spacing: -0.025em;
+        font-weight: 350;
+        color: var(--text-primary);
+        margin: 0 0 1.25rem;
+      }
+
+      .meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border-hairline);
+      }
+
+      .time-pill {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.8125rem;
+        font-weight: 450;
+        color: var(--text-muted);
+        letter-spacing: 0.01em;
+      }
+
+      /* Stepper */
+      .servings-stepper {
+        display: inline-flex;
+        align-items: center;
+        background: transparent;
+        border: 1px solid var(--border-hairline);
+        height: 28px;
+      }
+
+      .servings-stepper:focus-within {
+        border-color: var(--accent);
+      }
+
+      .stepper-label {
+        font-size: 0.75rem;
+        font-weight: 450;
+        color: var(--text-muted);
+        padding: 0 0.55rem;
+        user-select: none;
+        border-right: 1px solid var(--border-hairline);
+        height: 100%;
+        display: flex;
+        align-items: center;
+      }
+
+      .step-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 0.95rem;
+        width: 26px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease;
+        touch-action: manipulation;
+      }
+
+      .step-btn:hover {
+        background: #F2EDE6;
+        color: var(--accent);
+      }
+
+      .servings-input {
+        background: transparent;
+        border: none;
+        border-left: 1px solid var(--border-hairline);
+        border-right: 1px solid var(--border-hairline);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        text-align: center;
+        width: 1.85rem;
+        height: 100%;
+        font-variant-numeric: tabular-nums;
+        -moz-appearance: textfield;
+        border-radius: 0;
+        outline: none;
+      }
+
+      .servings-input::-webkit-outer-spin-button,
+      .servings-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      /* Headings */
+      h2 {
+        font-family: var(--font-serif);
+        font-optical-sizing: auto;
+        font-size: 1.3rem;
+        font-weight: 350;
+        letter-spacing: -0.015em;
+        color: var(--text-primary);
+        margin: 2.25rem 0 0.85rem;
+      }
+
+      h3 {
+        font-family: var(--font-serif);
+        font-size: 1.05rem;
+        font-weight: 400;
+        color: var(--text-primary);
+        margin: 1.5rem 0 0.5rem;
+      }
+
+      /* ================================================================
+         INGREDIENTS & EQUIPMENT LISTS
+         ================================================================ */
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.5rem;
+      }
+
+      ul li {
+        position: relative;
+        display: block;
+        padding: 0.35rem 0 0.35rem var(--content-indent);
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        line-height: 1.55;
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.15s ease, color 0.15s ease;
+      }
+
+      /* Checkbox: sits flush at left 0 */
+      ul li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.55rem;
+        width: 13px;
+        height: 13px;
+        border: 1px solid #CFC8BE;
+        border-radius: 1px;
+        background: transparent;
+        transition: all 0.15s ease;
+      }
+
+      ul li:hover::before {
+        border-color: var(--text-muted);
+      }
+
+      /* Active checkmark */
+      ul li.is-done::before {
+        background-color: var(--text-primary);
+        border-color: var(--text-primary);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3 7.2L5.8 10L11 4' stroke='%23FAFAF8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      /* Completed item text wrapper: strikes ONLY the text length, never empty space */
+      .item-content {
+        display: inline;
+        transition: opacity 0.15s ease;
+      }
+
+      ul li.is-done {
+        opacity: 0.38;
+      }
+
+      ul li.is-done .item-content {
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+        text-decoration-color: var(--text-muted);
+        text-decoration-skip-ink: none;
+        color: var(--text-muted);
+      }
+
+      [data-qty] {
+        font-weight: 500;
+        color: inherit;
+        font-variant-numeric: tabular-nums lining-nums;
+        margin-right: 0.25rem;
+      }
+
+      /* Unified counter scope on main container */
+      main {
+        counter-reset: step-counter;
+      }
+
+      /* ================================================================
+         METHOD ORDERED LIST: Numeral at 0, text at var(--content-indent)
+         ================================================================ */
+      ol {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      ol li {
+        counter-increment: step-counter;
+        position: relative;
+        display: block;
+        padding: 0 0 0 var(--content-indent);
+        margin-bottom: 1.15rem;
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        line-height: 1.68;
+      }
+
+      /* Number: locked flush to left 0 with identical line-height for baseline lock */
+      ol li::before {
+        content: counter(step-counter) ".";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--content-indent);
+        color: var(--text-muted);
+        font-family: var(--font-sans);
+        font-size: 0.875rem;
+        font-weight: 450;
+        font-variant-numeric: tabular-nums lining-nums;
+        line-height: 1.68;
+        user-select: none;
+      }
+
+      /* Typography */
+      ol li strong,
+      blockquote strong,
+      main p strong {
+        color: var(--text-primary);
+        font-weight: 550;
+        letter-spacing: -0.015em;
+      }
+
+      ol li strong {
+        margin-right: 0.15rem;
+      }
+
+      em {
+        font-family: var(--font-serif);
+        font-style: italic;
+        font-weight: 400;
+        color: var(--text-primary);
+        font-size: 0.98em;
+      }
+
+      /* Blockquote / notes ('> Note:') */
+      blockquote {
+        margin: 1.35rem 0 1.35rem var(--content-indent);
+        padding: 0.5rem 0 0.5rem 0.95rem;
+        border-left: 1.5px solid var(--border-hairline);
+        background: transparent;
+        color: #48443F;
+        font-size: 0.9125rem;
+        line-height: 1.62;
+        transition: border-color 0.2s ease;
+      }
+
+      blockquote:hover {
+        border-left-color: var(--accent);
+      }
+
+      blockquote p {
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: inherit;
+        line-height: inherit;
+        color: inherit;
+      }
+
+      blockquote p + p {
+        margin-top: 0.5rem !important;
+      }
+
+      /* Paragraphs inside main */
+      main > p {
+        margin: 1.25rem 0 1.25rem var(--content-indent);
+        color: var(--text-secondary);
+        font-size: 0.9375rem;
+        line-height: 1.68;
+      }
+
+      hr {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/" class="back-link">← Recipes</a>
+      </nav>
+      <h1>{frontmatter.title}</h1>
+      
+      <div class="meta-row">
+        <span class="time-pill">{frontmatter.time}</span>
+
+        <div class="servings-stepper" role="group" aria-label="Adjust servings">
+          <span class="stepper-label">Servings</span>
+          <button type="button" class="step-btn" id="btn-dec" aria-label="Decrease servings">−</button>
+          <input 
+            type="number" 
+            inputmode="numeric"
+            id="servings-input" 
+            class="servings-input" 
+            value={defaultServings} 
+            min="1" 
+            max="99" 
+            data-base-servings={defaultServings} 
+          />
+          <button type="button" class="step-btn" id="btn-inc" aria-label="Increase servings">+</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <slot />
+    </main>
+
+    <script>
+      function initServingsScaler() {
+        const input = document.getElementById('servings-input') as HTMLInputElement | null;
+        const btnDec = document.getElementById('btn-dec');
+        const btnInc = document.getElementById('btn-inc');
+        const qtyElements = document.querySelectorAll<HTMLElement>('[data-qty]');
+        const items = document.querySelectorAll<HTMLLIElement>('main ul li');
+
+        // Wrap list item children in .item-content so strike-through hugs ONLY the actual text length
+        items.forEach(li => {
+          if (!li.querySelector('.item-content')) {
+            const wrapper = document.createElement('span');
+            wrapper.className = 'item-content';
+            while (li.firstChild) {
+              wrapper.appendChild(li.firstChild);
+            }
+            li.appendChild(wrapper);
+          }
+        });
+
+        if (!input) return;
+        const baseServings = parseFloat(input.dataset.baseServings || '1') || 1;
+
+        qtyElements.forEach(el => {
+          if (!el.dataset.baseQty) {
+            el.dataset.baseQty = el.getAttribute('data-qty') || el.innerText.trim();
+          }
+        });
+
+        function updateQuantities(target: number) {
+          if (isNaN(target) || target <= 0) return;
+          const factor = target / baseServings;
+
+          qtyElements.forEach(el => {
+            const base = parseFloat(el.dataset.baseQty || '0');
+            if (!isNaN(base)) {
+              const scaled = base * factor;
+              el.innerText = (Math.round(scaled * 100) / 100).toString();
+            }
+          });
+        }
+
+        btnDec?.addEventListener('click', () => {
+          let current = Math.max(1, (parseInt(input.value, 10) || baseServings) - 1);
+          input.value = current.toString();
+          updateQuantities(current);
+        });
+
+        btnInc?.addEventListener('click', () => {
+          let current = Math.min(99, (parseInt(input.value, 10) || baseServings) + 1);
+          input.value = current.toString();
+          updateQuantities(current);
+        });
+
+        input.addEventListener('change', () => {
+          let val = parseInt(input.value, 10);
+          if (isNaN(val) || val < 1) val = 1;
+          input.value = val.toString();
+          updateQuantities(val);
+        });
+
+        items.forEach(li => {
+          li.setAttribute('tabindex', '0');
+          li.setAttribute('role', 'checkbox');
+          li.setAttribute('aria-checked', 'false');
+
+          const toggle = () => {
+            const isDone = li.classList.toggle('is-done');
+            li.setAttribute('aria-checked', isDone ? 'true' : 'false');
+          };
+
+          li.addEventListener('click', toggle);
+          li.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              toggle();
+            }
+          });
+        });
+      }
+
+      document.addEventListener('astro:page-load', initServingsScaler);
+      if (document.readyState !== 'loading') initServingsScaler();
+      else document.addEventListener('DOMContentLoaded', initServingsScaler);
+    </script>
+  </body>
+</html>
