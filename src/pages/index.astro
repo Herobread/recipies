@@ -5,7 +5,7 @@ interface RecipeFrontmatter {
   time?: string;
 }
 
-const recipes = await Astro.glob<RecipeFrontmatter>('./recipes/*.md');
+const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
 ---
 <!doctype html>
 <html lang="en">
