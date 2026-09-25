@@ -372,7 +372,7 @@ const defaultServings = frontmatter.servings || 2;
   <body>
     <header>
       <nav>
-        <a href="/" class="back-link">← Recipes</a>
+        <a href={import.meta.env.BASE_URL} class="back-link">← Recipes</a>
       </nav>
       <h1>{frontmatter.title}</h1>
       
