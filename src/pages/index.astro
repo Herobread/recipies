@@ -3,6 +3,7 @@ interface RecipeFrontmatter {
   title: string;
   servings?: number | string;
   time?: string;
+  description?: string;
 }
 
 const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
@@ -27,8 +28,6 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         
         --font-serif: 'Fraunces', Georgia, serif;
         --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-        --content-indent: 1.85rem;
       }
 
       * { 
@@ -78,13 +77,12 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         border-top: 1px solid var(--border-hairline);
       }
 
+      /* Base layout: stacked for mobile (Header/Title top, details bottom) */
       .recipe-item {
-        position: relative;
-        display: grid;
-        grid-template-columns: var(--content-indent) 1fr auto;
-        align-items: baseline;
-        gap: 0.75rem;
-        padding: 0.85rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 1rem 0;
         border-bottom: 1px solid var(--border-hairline);
         text-decoration: none;
         color: inherit;
@@ -95,24 +93,13 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         color: var(--accent);
       }
 
-      .recipe-item:hover .recipe-title,
-      .recipe-item:hover .recipe-num {
+      .recipe-item:hover .recipe-title {
         color: var(--accent);
-      }
-
-      .recipe-num {
-        font-family: var(--font-sans);
-        font-size: 0.8125rem;
-        font-weight: 450;
-        color: var(--text-muted);
-        font-variant-numeric: tabular-nums lining-nums;
-        transition: color 0.15s ease;
-        user-select: none;
       }
 
       .recipe-title {
         font-family: var(--font-serif);
-        font-size: 1.15rem;
+        font-size: 1.2rem;
         font-weight: 400;
         letter-spacing: -0.015em;
         color: var(--text-primary);
@@ -120,13 +107,32 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         transition: color 0.15s ease;
       }
 
+      .recipe-details {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
       .recipe-time {
         font-family: var(--font-sans);
         font-size: 0.8125rem;
         color: var(--text-muted);
         font-variant-numeric: tabular-nums lining-nums;
-        white-space: nowrap;
-        text-align: right;
+      }
+
+      /* Desktop / wider screens: title on left, time/details aligned on right */
+      @media (min-width: 540px) {
+        .recipe-item {
+          flex-direction: row;
+          align-items: baseline;
+          justify-content: space-between;
+          padding: 0.85rem 0;
+        }
+
+        .recipe-details {
+          margin-left: 1.5rem;
+          flex-shrink: 0;
+        }
       }
 
       .empty-state {
@@ -144,17 +150,16 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
       {recipes.length === 0 ? (
         <p class="empty-state">No recipes found.</p>
       ) : (
-        recipes.map((r, index) => (
+        recipes.map((r) => (
           <a href={r.url} class="recipe-item">
-            <span class="recipe-num">
-              {String(index + 1).padStart(2, '0')}
-            </span>
             <span class="recipe-title">
               {r.frontmatter.title}
             </span>
             {r.frontmatter.time && (
-              <span class="recipe-time">
-                {r.frontmatter.time}
+              <span class="recipe-details">
+                <span class="recipe-time">
+                  {r.frontmatter.time}
+                </span>
               </span>
             )}
           </a>
