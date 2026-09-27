@@ -38,4 +38,4 @@ servings: 9
 
 > At this point, flat freeze them for later: place each dumpling separated on a flour-dusted tray in the freezer. Once completely frozen, transfer them into freezer bags.
 
-7. **Boil and serve:** Bring a large pot of salted water to a rolling boil. Drop the varenyky in batches, stir gently from the bottom to prevent sticking, and cook for 3–4 minutes once they float to the surface. Drain and toss immediately with butter or serve with cold sour cream, topped with fresh dill or chives.
+7. **Boil and serve:** Bring a large pot of salted water to a rolling boil. Drop the varenyky in batches, stir gently from the bottom to prevent sticking, and cook for 5 minutes once they float to the surface. Drain and toss immediately with butter or serve with cold sour cream, topped with fresh dill or chives.
