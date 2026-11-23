@@ -7,6 +7,33 @@ interface RecipeFrontmatter {
 }
 
 const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
+
+function parsePrepMinutes(time?: string): number {
+  if (!time) return Number.MAX_SAFE_INTEGER;
+  const prepMatch = time.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins|minute|minutes)?\s*prep\b/i);
+  const match = prepMatch ?? time.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins|minute|minutes)\b/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+
+  const value = parseFloat(match[1]);
+  const unit = (match[2] ?? 'm').toLowerCase();
+  return unit.startsWith('h') ? value * 60 : value;
+}
+
+const sortedRecipes = [...recipes].sort((a, b) =>
+  a.frontmatter.title.localeCompare(b.frontmatter.title)
+);
+
+function extractSearchText(recipe: (typeof recipes)[number]): string {
+  const raw = typeof recipe.rawContent === 'function' ? recipe.rawContent() : '';
+  const ingredientsMatch = raw.match(/##\s+Ingredients\b([\s\S]*?)(?:\n##\s+|$)/i);
+  const ingredients = (ingredientsMatch?.[1] ?? '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[*_`>-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return `${recipe.frontmatter.title} ${ingredients}`.toLowerCase();
+}
 ---
 <!doctype html>
 <html lang="en">
@@ -57,28 +84,108 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         letter-spacing: -0.012em;
       }
 
-      header {
-        margin-bottom: 2rem;
+      .toolbar {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid var(--border-hairline);
+        transition: border-color 0.2s ease;
       }
 
-      h1 {
+      .toolbar:focus-within {
+        border-bottom-color: var(--accent);
+      }
+
+      .search-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-radius: 0;
         font-family: var(--font-serif);
-        font-optical-sizing: auto;
-        font-size: clamp(2rem, 4.5vw, 2.6rem);
-        line-height: 1.15;
-        letter-spacing: -0.025em;
+        font-size: 1.125rem;
         font-weight: 350;
+        letter-spacing: -0.015em;
+        line-height: 1.35;
         color: var(--text-primary);
+        outline: none;
+        caret-color: var(--accent);
+      }
+
+      .search-input::placeholder {
+        font-style: italic;
+        color: var(--text-muted);
+        opacity: 0.75;
+      }
+
+      .search-input::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .sort-controls {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .sort-sep {
+        color: var(--border-hairline);
+        user-select: none;
+      }
+
+      .sort-btn {
+        background: transparent;
+        border: none;
+        padding: 0;
+        font-family: var(--font-sans);
+        font-size: inherit;
+        font-weight: 450;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: color 0.15s ease;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .sort-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .sort-btn[aria-pressed="true"] {
+        color: var(--accent);
+      }
+
+      .sort-dir {
+        display: inline-block;
+        width: 0.85em;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+
+      .sort-btn[aria-pressed="true"] .sort-dir {
+        opacity: 1;
       }
 
       .recipe-index {
         display: flex;
         flex-direction: column;
-        border-top: 1px solid var(--border-hairline);
       }
 
       /* Base layout: stacked for mobile (Header/Title top, details bottom) */
       .recipe-item {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
@@ -89,12 +196,24 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         transition: color 0.15s ease;
       }
 
-      .recipe-item:hover {
+      .recipe-item:hover,
+      .recipe-item.is-selected {
         color: var(--accent);
       }
 
-      .recipe-item:hover .recipe-title {
+      .recipe-item:hover .recipe-title,
+      .recipe-item.is-selected .recipe-title {
         color: var(--accent);
+      }
+
+      .recipe-item.is-selected::before {
+        content: "";
+        position: absolute;
+        left: -0.75rem;
+        top: 0.95rem;
+        bottom: 0.95rem;
+        width: 2px;
+        background: var(--accent);
       }
 
       .recipe-title {
@@ -139,32 +258,242 @@ const recipes = await Astro.glob<RecipeFrontmatter>('./recipies/*.md');
         padding: 2rem 0;
         color: var(--text-muted);
       }
+
+      [hidden] {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
-    <header>
-      <h1>Oleksii's Recipes</h1>
-    </header>
+    <div class="toolbar">
+      <input
+        type="search"
+        id="recipe-search"
+        class="search-input"
+        placeholder="Search..."
+        aria-label="Search recipes"
+        autocomplete="off"
+      />
+      <div class="sort-controls" role="group" aria-label="Sort recipes">
+        <button type="button" class="sort-btn" id="sort-name" aria-pressed="true">A–Z</button>
+        <span class="sort-sep" aria-hidden="true">/</span>
+        <button type="button" class="sort-btn" id="sort-prep" aria-pressed="false">
+          Prep<span class="sort-dir" aria-hidden="true">↑</span>
+        </button>
+      </div>
+    </div>
 
-    <main class="recipe-index">
-      {recipes.length === 0 ? (
+    <main class="recipe-index" id="recipe-index">
+      {sortedRecipes.length === 0 ? (
         <p class="empty-state">No recipes found.</p>
       ) : (
-        recipes.map((r) => (
-          <a href={r.url} class="recipe-item">
-            <span class="recipe-title">
-              {r.frontmatter.title}
-            </span>
-            {r.frontmatter.time && (
-              <span class="recipe-details">
-                <span class="recipe-time">
-                  {r.frontmatter.time}
-                </span>
+        <>
+          {sortedRecipes.map((r, index) => (
+            <a
+              href={r.url}
+              id={`recipe-item-${index}`}
+              class="recipe-item"
+              data-index={index}
+              data-search={extractSearchText(r)}
+              data-prep-minutes={parsePrepMinutes(r.frontmatter.time)}
+            >
+              <span class="recipe-title">
+                {r.frontmatter.title}
               </span>
-            )}
-          </a>
-        ))
+              {r.frontmatter.time && (
+                <span class="recipe-details">
+                  <span class="recipe-time">
+                    {r.frontmatter.time}
+                  </span>
+                </span>
+              )}
+            </a>
+          ))}
+          <p class="empty-state" id="search-empty" hidden>No matching recipes.</p>
+        </>
       )}
     </main>
+
+    <script>
+      function initRecipeControls() {
+        const list = document.getElementById('recipe-index');
+        const searchInput = document.getElementById('recipe-search') as HTMLInputElement | null;
+        const emptyState = document.getElementById('search-empty');
+        const btnName = document.getElementById('sort-name');
+        const btnPrep = document.getElementById('sort-prep');
+        const prepDir = btnPrep?.querySelector('.sort-dir');
+        if (!list || !btnName || !btnPrep) return;
+
+        let prepAsc = true;
+        let selectedItem: HTMLAnchorElement | null = null;
+
+        function getVisibleItems(): HTMLAnchorElement[] {
+          if (!list) return [];
+          return Array.from(list.querySelectorAll<HTMLAnchorElement>('.recipe-item')).filter(
+            (item) => !item.hidden
+          );
+        }
+
+        function setSelected(item: HTMLAnchorElement | null) {
+          if (selectedItem) {
+            selectedItem.classList.remove('is-selected');
+            selectedItem.removeAttribute('aria-selected');
+          }
+          selectedItem = item;
+          if (selectedItem) {
+            selectedItem.classList.add('is-selected');
+            selectedItem.setAttribute('aria-selected', 'true');
+            if (selectedItem.id) {
+              searchInput?.setAttribute('aria-activedescendant', selectedItem.id);
+            }
+            selectedItem.scrollIntoView({ block: 'nearest' });
+          } else {
+            searchInput?.removeAttribute('aria-activedescendant');
+          }
+        }
+
+        function sortItems(mode: 'name' | 'prep') {
+          if (!list || !btnName || !btnPrep) return;
+          const items = Array.from(list.querySelectorAll<HTMLElement>('.recipe-item'));
+
+          items.sort((a, b) => {
+            const indexA = Number(a.dataset.index ?? 0);
+            const indexB = Number(b.dataset.index ?? 0);
+
+            if (mode === 'name') {
+              return indexA - indexB;
+            }
+
+            const prepA = Number(a.dataset.prepMinutes ?? Number.MAX_SAFE_INTEGER);
+            const prepB = Number(b.dataset.prepMinutes ?? Number.MAX_SAFE_INTEGER);
+            if (prepA !== prepB) {
+              return prepAsc ? prepA - prepB : prepB - prepA;
+            }
+            return indexA - indexB;
+          });
+
+          items.forEach((item) => list.appendChild(item));
+          if (emptyState) list.appendChild(emptyState);
+          if (selectedItem && !selectedItem.hidden) {
+            selectedItem.scrollIntoView({ block: 'nearest' });
+          }
+
+          const isPrep = mode === 'prep';
+          btnName.setAttribute('aria-pressed', String(!isPrep));
+          btnPrep.setAttribute('aria-pressed', String(isPrep));
+          if (prepDir) {
+            prepDir.textContent = prepAsc ? '↑' : '↓';
+          }
+        }
+
+        function filterItems() {
+          if (!list || !searchInput) return;
+          const terms = searchInput.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+          const items = Array.from(list.querySelectorAll<HTMLElement>('.recipe-item'));
+          let visibleCount = 0;
+
+          items.forEach((item) => {
+            const haystack = item.dataset.search ?? '';
+            const matches = terms.length === 0 || terms.every((term) => haystack.includes(term));
+            item.hidden = !matches;
+            if (matches) visibleCount++;
+          });
+
+          if (selectedItem && selectedItem.hidden) {
+            setSelected(null);
+          }
+
+          if (emptyState) {
+            emptyState.hidden = visibleCount > 0;
+          }
+        }
+
+        searchInput?.addEventListener('input', filterItems);
+
+        document.addEventListener('keydown', (e) => {
+          if (e.isComposing) return;
+
+          if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            searchInput?.focus();
+            searchInput?.select();
+            return;
+          }
+
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+          const active = document.activeElement;
+          const isEditable =
+            active instanceof HTMLInputElement ||
+            active instanceof HTMLTextAreaElement ||
+            (active instanceof HTMLElement && active.isContentEditable);
+
+          if (e.key === '/' && !isEditable) {
+            e.preventDefault();
+            searchInput?.focus();
+            return;
+          }
+
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            const visible = getVisibleItems();
+            if (visible.length === 0) return;
+
+            e.preventDefault();
+            const currentIdx = selectedItem ? visible.indexOf(selectedItem) : -1;
+
+            if (e.key === 'ArrowUp') {
+              if (currentIdx <= 0) {
+                setSelected(null);
+                searchInput?.focus();
+              } else {
+                setSelected(visible[currentIdx - 1]);
+              }
+              return;
+            }
+
+            const nextIdx = currentIdx < visible.length - 1 ? currentIdx + 1 : 0;
+            if (document.activeElement === searchInput) {
+              searchInput?.blur();
+            }
+            setSelected(visible[nextIdx]);
+            return;
+          }
+
+          if (
+            e.key === 'Enter' &&
+            selectedItem &&
+            !selectedItem.hidden &&
+            (document.activeElement === searchInput || document.activeElement === document.body)
+          ) {
+            e.preventDefault();
+            selectedItem.click();
+            return;
+          }
+
+          if (e.key === 'Escape' && selectedItem) {
+            e.preventDefault();
+            setSelected(null);
+          }
+        });
+
+        btnName.addEventListener('click', () => {
+          prepAsc = true;
+          sortItems('name');
+        });
+
+        btnPrep.addEventListener('click', () => {
+          if (btnPrep.getAttribute('aria-pressed') === 'true') {
+            prepAsc = !prepAsc;
+          } else {
+            prepAsc = true;
+          }
+          sortItems('prep');
+        });
+      }
+
+      document.addEventListener('astro:page-load', initRecipeControls);
+      if (document.readyState !== 'loading') initRecipeControls();
+      else document.addEventListener('DOMContentLoaded', initRecipeControls);
+    </script>
   </body>
 </html>
