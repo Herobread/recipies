@@ -1,6 +1,8 @@
 /** Initialize search filtering, prep-time sorting, and keyboard navigation on the recipe index. */
 export function initRecipeControls() {
   const list = document.getElementById('recipe-index');
+  const toolbar = document.getElementById('toolbar');
+  const indicator = document.getElementById('selection-indicator');
   const searchInput = document.getElementById('recipe-search') as HTMLInputElement | null;
   const emptyState = document.getElementById('search-empty');
   const btnName = document.getElementById('sort-name');
@@ -13,6 +15,26 @@ export function initRecipeControls() {
   let prepAsc = true;
   let selectedItem: HTMLAnchorElement | null = null;
 
+  function updateIndicator() {
+    if (!indicator) return;
+    const target =
+      selectedItem && !selectedItem.hidden
+        ? selectedItem
+        : document.activeElement === searchInput
+          ? toolbar
+          : null;
+
+    if (!target) {
+      indicator.style.opacity = '0';
+      return;
+    }
+
+    const top = target === toolbar ? target.offsetTop : (list?.offsetTop ?? 0) + target.offsetTop;
+    indicator.style.transform = `translateY(${top}px)`;
+    indicator.style.height = `${target.offsetHeight}px`;
+    indicator.style.opacity = '1';
+  }
+
   function setSelected(item: HTMLAnchorElement | null) {
     if (selectedItem) {
       selectedItem.classList.remove('is-selected');
@@ -21,6 +43,7 @@ export function initRecipeControls() {
     selectedItem = item;
     if (!selectedItem) {
       searchInput?.removeAttribute('aria-activedescendant');
+      updateIndicator();
       return;
     }
     selectedItem.classList.add('is-selected');
@@ -28,6 +51,7 @@ export function initRecipeControls() {
     if (selectedItem.id) {
       searchInput?.setAttribute('aria-activedescendant', selectedItem.id);
     }
+    updateIndicator();
     selectedItem.scrollIntoView({ block: 'nearest' });
   }
 
@@ -48,6 +72,7 @@ export function initRecipeControls() {
     for (const item of allItems) list.appendChild(item);
     if (emptyState) list.appendChild(emptyState);
     if (selectedItem && !selectedItem.hidden) {
+      updateIndicator();
       selectedItem.scrollIntoView({ block: 'nearest' });
     }
 
@@ -139,8 +164,14 @@ export function initRecipeControls() {
     }
   }
 
-  searchInput?.addEventListener('input', filterItems);
+  searchInput?.addEventListener('focus', updateIndicator);
+  searchInput?.addEventListener('blur', updateIndicator);
+  searchInput?.addEventListener('input', () => {
+    filterItems();
+    updateIndicator();
+  });
   document.addEventListener('keydown', handleKeydown);
+  window.addEventListener('resize', updateIndicator);
 
   btnName.addEventListener('click', () => {
     prepAsc = true;

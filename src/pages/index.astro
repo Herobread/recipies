@@ -25,50 +25,54 @@ const sortedRecipes = [...recipes].sort((a, b) =>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,350;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div class="toolbar">
-      <input
-        type="search"
-        id="recipe-search"
-        class="search-input"
-        placeholder="Search..."
-        aria-label="Search recipes"
-        autocomplete="off"
-      />
-      <div class="sort-controls" role="group" aria-label="Sort recipes">
-        <button type="button" class="sort-btn" id="sort-name" aria-pressed="true">A–Z</button>
-        <span class="sort-sep" aria-hidden="true">/</span>
-        <button type="button" class="sort-btn" id="sort-prep" aria-pressed="false">
-          Prep<span class="sort-dir" aria-hidden="true">↑</span>
-        </button>
-      </div>
-    </div>
+    <div class="index-shell" id="index-shell">
+      <span class="selection-indicator" id="selection-indicator" aria-hidden="true"></span>
 
-    <main class="recipe-index" id="recipe-index">
-      {sortedRecipes.length === 0 ? (
-        <p class="empty-state">No recipes found.</p>
-      ) : (
-        <>
-          {sortedRecipes.map((r, index) => (
-            <a
-              href={r.url}
-              id={`recipe-item-${index}`}
-              class="recipe-item"
-              data-index={index}
-              data-search={extractSearchText(r)}
-              data-prep-minutes={parsePrepMinutes(r.frontmatter.time)}
-            >
-              <span class="recipe-title">{r.frontmatter.title}</span>
-              {r.frontmatter.time && (
-                <span class="recipe-details">
-                  <span class="recipe-time">{r.frontmatter.time}</span>
-                </span>
-              )}
-            </a>
-          ))}
-          <p class="empty-state" id="search-empty" hidden>No matching recipes.</p>
-        </>
-      )}
-    </main>
+      <div class="toolbar" id="toolbar">
+        <input
+          type="search"
+          id="recipe-search"
+          class="search-input"
+          placeholder="Search..."
+          aria-label="Search recipes"
+          autocomplete="off"
+        />
+        <div class="sort-controls" role="group" aria-label="Sort recipes">
+          <button type="button" class="sort-btn" id="sort-name" aria-pressed="true">A–Z</button>
+          <span class="sort-sep" aria-hidden="true">/</span>
+          <button type="button" class="sort-btn" id="sort-prep" aria-pressed="false">
+            Prep<span class="sort-dir" aria-hidden="true">↑</span>
+          </button>
+        </div>
+      </div>
+
+      <main class="recipe-index" id="recipe-index">
+        {sortedRecipes.length === 0 ? (
+          <p class="empty-state">No recipes found.</p>
+        ) : (
+          <>
+            {sortedRecipes.map((r, index) => (
+              <a
+                href={r.url}
+                id={`recipe-item-${index}`}
+                class="recipe-item"
+                data-index={index}
+                data-search={extractSearchText(r)}
+                data-prep-minutes={parsePrepMinutes(r.frontmatter.time)}
+              >
+                <span class="recipe-title">{r.frontmatter.title}</span>
+                {r.frontmatter.time && (
+                  <span class="recipe-details">
+                    <span class="recipe-time">{r.frontmatter.time}</span>
+                  </span>
+                )}
+              </a>
+            ))}
+            <p class="empty-state" id="search-empty" hidden>No matching recipes.</p>
+          </>
+        )}
+      </main>
+    </div>
 
     <script>
       import '../scripts/recipe-index';
