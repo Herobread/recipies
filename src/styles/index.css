@@ -1,0 +1,215 @@
+:root {
+  --bg: #FAFAF8;
+  --text-primary: #191816;
+  --text-secondary: #363430;
+  --text-muted: #8A857D;
+  --border-hairline: #E2DDD5;
+  --accent: #B8533B;
+
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "calt";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem calc(4rem + env(safe-area-inset-bottom));
+  line-height: 1.68;
+  font-size: 0.9375rem;
+  letter-spacing: -0.012em;
+}
+
+.toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border-hairline);
+  transition: border-color 0.2s ease;
+}
+
+.toolbar:focus-within {
+  border-bottom-color: var(--accent);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 350;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: var(--text-primary);
+  outline: none;
+  caret-color: var(--accent);
+}
+
+.search-input::placeholder {
+  font-style: italic;
+  color: var(--text-muted);
+  opacity: 0.75;
+}
+
+.search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sort-controls {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sort-sep {
+  color: var(--border-hairline);
+  user-select: none;
+}
+
+.sort-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: inherit;
+  font-weight: 450;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sort-btn:hover {
+  color: var(--text-primary);
+}
+
+.sort-btn[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.sort-dir {
+  display: inline-block;
+  width: 0.85em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sort-btn[aria-pressed="true"] .sort-dir {
+  opacity: 1;
+}
+
+.recipe-index {
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-hairline);
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.15s ease;
+}
+
+.recipe-item:hover,
+.recipe-item.is-selected {
+  color: var(--accent);
+}
+
+.recipe-item:hover .recipe-title,
+.recipe-item.is-selected .recipe-title {
+  color: var(--accent);
+}
+
+.recipe-item.is-selected::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  top: 0.95rem;
+  bottom: 0.95rem;
+  width: 2px;
+  background: var(--accent);
+}
+
+.recipe-title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  line-height: 1.35;
+  transition: color 0.15s ease;
+}
+
+.recipe-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.recipe-time {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@media (min-width: 540px) {
+  .recipe-item {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0.85rem 0;
+  }
+
+  .recipe-details {
+    margin-left: 1.5rem;
+    flex-shrink: 0;
+  }
+}
+
+.empty-state {
+  padding: 2rem 0;
+  color: var(--text-muted);
+}
+
+[hidden] {
+  display: none !important;
+}
