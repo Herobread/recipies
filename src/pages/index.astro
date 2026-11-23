@@ -1,6 +1,7 @@
 ---
+import { ViewTransitions } from 'astro:transitions';
 import '../styles/index.css';
-import { extractSearchText, parsePrepMinutes } from '../utils/recipes';
+import { extractSearchText, parsePrepMinutes, titleTransitionName } from '../utils/recipes';
 
 interface RecipeFrontmatter {
   title: string;
@@ -20,6 +21,7 @@ const sortedRecipes = [...recipes].sort((a, b) =>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Kitchen</title>
+    <ViewTransitions />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,350;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
@@ -60,7 +62,9 @@ const sortedRecipes = [...recipes].sort((a, b) =>
                 data-search={extractSearchText(r)}
                 data-prep-minutes={parsePrepMinutes(r.frontmatter.time)}
               >
-                <span class="recipe-title">{r.frontmatter.title}</span>
+                <span class="recipe-title" transition:name={titleTransitionName(r.frontmatter.title)}>
+                {r.frontmatter.title}
+              </span>
                 {r.frontmatter.time && (
                   <span class="recipe-details">
                     <span class="recipe-time">{r.frontmatter.time}</span>

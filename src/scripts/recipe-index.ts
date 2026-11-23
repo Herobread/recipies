@@ -1,3 +1,5 @@
+let activeController: AbortController | null = null;
+
 /** Initialize search filtering, prep-time sorting, and keyboard navigation on the recipe index. */
 export function initRecipeControls() {
   const list = document.getElementById('recipe-index');
@@ -11,18 +13,25 @@ export function initRecipeControls() {
   if (!list || !btnName || !btnPrep || list.dataset.bound === 'true') return;
   list.dataset.bound = 'true';
 
+  activeController?.abort();
+  activeController = new AbortController();
+  const { signal } = activeController;
+
   const allItems = Array.from(list.querySelectorAll<HTMLAnchorElement>('.recipe-item'));
   let prepAsc = true;
   let selectedItem: HTMLAnchorElement | null = null;
+  let hoveredItem: HTMLAnchorElement | null = null;
 
   function updateIndicator() {
     if (!indicator) return;
     const target =
       selectedItem && !selectedItem.hidden
         ? selectedItem
-        : document.activeElement === searchInput
-          ? toolbar
-          : null;
+        : hoveredItem && !hoveredItem.hidden
+          ? hoveredItem
+          : document.activeElement === searchInput
+            ? toolbar
+            : null;
 
     if (!target) {
       indicator.style.opacity = '0';
@@ -99,6 +108,7 @@ export function initRecipeControls() {
   }
 
   function stepSelection(direction: 1 | -1) {
+    hoveredItem = null;
     const visible = allItems.filter((item) => !item.hidden);
     if (visible.length === 0) return;
 
@@ -158,11 +168,34 @@ export function initRecipeControls() {
       return;
     }
 
-    if (e.key === 'Escape' && selectedItem) {
-      e.preventDefault();
-      setSelected(null);
+    if (e.key === 'Escape') {
+      if (selectedItem) {
+        e.preventDefault();
+        setSelected(null);
+      } else if (searchInput && searchInput.value) {
+        e.preventDefault();
+        searchInput.value = '';
+        filterItems();
+        updateIndicator();
+      } else if (document.activeElement === searchInput) {
+        e.preventDefault();
+        searchInput.blur();
+      }
+      return;
     }
   }
+
+  for (const item of allItems) {
+    item.addEventListener('pointerenter', () => {
+      hoveredItem = item;
+      updateIndicator();
+    });
+  }
+
+  list.addEventListener('pointerleave', () => {
+    hoveredItem = null;
+    updateIndicator();
+  });
 
   searchInput?.addEventListener('focus', updateIndicator);
   searchInput?.addEventListener('blur', updateIndicator);
@@ -170,8 +203,16 @@ export function initRecipeControls() {
     filterItems();
     updateIndicator();
   });
-  document.addEventListener('keydown', handleKeydown);
-  window.addEventListener('resize', updateIndicator);
+  document.addEventListener('keydown', handleKeydown, { signal });
+  window.addEventListener('resize', updateIndicator, { signal });
+  document.addEventListener(
+    'astro:before-swap',
+    () => {
+      activeController?.abort();
+      activeController = null;
+    },
+    { once: true, signal }
+  );
 
   btnName.addEventListener('click', () => {
     prepAsc = true;
@@ -182,6 +223,22 @@ export function initRecipeControls() {
     prepAsc = btnPrep.getAttribute('aria-pressed') === 'true' ? !prepAsc : true;
     sortItems('prep');
   });
+
+  try {
+    const lastUrl = sessionStorage.getItem('last-recipe-url');
+    if (lastUrl) {
+      sessionStorage.removeItem('last-recipe-url');
+      const normalizedLast = lastUrl.replace(/\/$/, '');
+      const match = allItems.find(
+        (item) => new URL(item.href).pathname.replace(/\/$/, '') === normalizedLast
+      );
+      if (match && !match.hidden) {
+        setSelected(match);
+      }
+    }
+  } catch {
+    // Ignore storage access errors
+  }
 }
 
 document.addEventListener('astro:page-load', initRecipeControls);

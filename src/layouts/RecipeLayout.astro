@@ -1,4 +1,7 @@
 ---
+import { ViewTransitions } from 'astro:transitions';
+import { titleTransitionName } from '../utils/recipes';
+
 const { frontmatter } = Astro.props;
 const defaultServings = frontmatter.servings || 2;
 ---
@@ -8,6 +11,7 @@ const defaultServings = frontmatter.servings || 2;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{frontmatter.title} - Kitchen</title>
+    <ViewTransitions />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,350;0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
@@ -76,6 +80,8 @@ const defaultServings = frontmatter.servings || 2;
 
       /* Title & Header */
       h1 {
+        width: fit-content;
+        max-width: 100%;
         font-family: var(--font-serif);
         font-optical-sizing: auto;
         font-size: clamp(2rem, 4.5vw, 2.6rem);
@@ -367,6 +373,25 @@ const defaultServings = frontmatter.servings || 2;
       hr {
         display: none;
       }
+
+      ::view-transition-group(*) {
+        animation-duration: 0.48s;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation-duration: 0.3s;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*),
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+          animation-duration: 0.01ms !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -374,7 +399,7 @@ const defaultServings = frontmatter.servings || 2;
       <nav>
         <a href={import.meta.env.BASE_URL} class="back-link">← Recipes</a>
       </nav>
-      <h1>{frontmatter.title}</h1>
+      <h1 transition:name={titleTransitionName(frontmatter.title)}>{frontmatter.title}</h1>
       
       <div class="meta-row">
         <span class="time-pill">{frontmatter.time}</span>
@@ -402,26 +427,61 @@ const defaultServings = frontmatter.servings || 2;
     </main>
 
     <script>
+      const STATE_TTL_MS = 2 * 24 * 60 * 60 * 1000;
+
+      interface RecipeState {
+        checked: number[];
+        servings?: number;
+        savedAt: number;
+      }
+
+      function getStorageKey() {
+        return `recipe-state:${window.location.pathname}`;
+      }
+
+      function loadRecipeState(): RecipeState | null {
+        try {
+          const raw = localStorage.getItem(getStorageKey());
+          if (!raw) return null;
+          const parsed = JSON.parse(raw) as RecipeState;
+          if (!parsed || typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > STATE_TTL_MS) {
+            localStorage.removeItem(getStorageKey());
+            return null;
+          }
+          return parsed;
+        } catch {
+          return null;
+        }
+      }
+
+      function saveRecipeState(items: NodeListOf<HTMLLIElement>, servings: number, baseServings: number) {
+        try {
+          const checked: number[] = [];
+          items.forEach((li, index) => {
+            if (li.classList.contains('is-done')) checked.push(index);
+          });
+          if (checked.length === 0 && servings === baseServings) {
+            localStorage.removeItem(getStorageKey());
+            return;
+          }
+          const state: RecipeState = { checked, servings, savedAt: Date.now() };
+          localStorage.setItem(getStorageKey(), JSON.stringify(state));
+        } catch {
+          // Ignore storage quota or private-mode restrictions
+        }
+      }
+
       function initServingsScaler() {
         const input = document.getElementById('servings-input') as HTMLInputElement | null;
         const btnDec = document.getElementById('btn-dec');
         const btnInc = document.getElementById('btn-inc');
         const qtyElements = document.querySelectorAll<HTMLElement>('[data-qty]');
         const items = document.querySelectorAll<HTMLLIElement>('main ul li');
+        const savedState = loadRecipeState();
+        const checkedSet = new Set(savedState?.checked ?? []);
 
-        // Wrap list item children in .item-content so strike-through hugs ONLY the actual text length
-        items.forEach(li => {
-          if (!li.querySelector('.item-content')) {
-            const wrapper = document.createElement('span');
-            wrapper.className = 'item-content';
-            while (li.firstChild) {
-              wrapper.appendChild(li.firstChild);
-            }
-            li.appendChild(wrapper);
-          }
-        });
-
-        if (!input) return;
+        if (!input || input.dataset.scalerInit) return;
+        input.dataset.scalerInit = 'true';
         const baseServings = parseFloat(input.dataset.baseServings || '1') || 1;
 
         qtyElements.forEach(el => {
@@ -443,33 +503,41 @@ const defaultServings = frontmatter.servings || 2;
           });
         }
 
-        btnDec?.addEventListener('click', () => {
-          let current = Math.max(1, (parseInt(input.value, 10) || baseServings) - 1);
-          input.value = current.toString();
-          updateQuantities(current);
-        });
+        function persist() {
+          const currentServings = parseInt(input!.value, 10) || baseServings;
+          saveRecipeState(items, currentServings, baseServings);
+        }
 
-        btnInc?.addEventListener('click', () => {
-          let current = Math.min(99, (parseInt(input.value, 10) || baseServings) + 1);
-          input.value = current.toString();
-          updateQuantities(current);
-        });
+        // Restore saved servings if within TTL
+        if (savedState?.servings && savedState.servings > 0 && savedState.servings !== baseServings) {
+          input.value = savedState.servings.toString();
+          updateQuantities(savedState.servings);
+        }
 
-        input.addEventListener('change', () => {
-          let val = parseInt(input.value, 10);
-          if (isNaN(val) || val < 1) val = 1;
-          input.value = val.toString();
-          updateQuantities(val);
-        });
+        // Wrap list item children in .item-content so strike-through hugs ONLY the actual text length
+        items.forEach((li, index) => {
+          if (li.dataset.checkInit) return;
+          li.dataset.checkInit = 'true';
 
-        items.forEach(li => {
+          if (!li.querySelector('.item-content')) {
+            const wrapper = document.createElement('span');
+            wrapper.className = 'item-content';
+            while (li.firstChild) {
+              wrapper.appendChild(li.firstChild);
+            }
+            li.appendChild(wrapper);
+          }
+
+          const initiallyDone = checkedSet.has(index);
+          li.classList.toggle('is-done', initiallyDone);
           li.setAttribute('tabindex', '0');
           li.setAttribute('role', 'checkbox');
-          li.setAttribute('aria-checked', 'false');
+          li.setAttribute('aria-checked', initiallyDone ? 'true' : 'false');
 
           const toggle = () => {
             const isDone = li.classList.toggle('is-done');
             li.setAttribute('aria-checked', isDone ? 'true' : 'false');
+            persist();
           };
 
           li.addEventListener('click', toggle);
@@ -480,11 +548,130 @@ const defaultServings = frontmatter.servings || 2;
             }
           });
         });
+
+        btnDec?.addEventListener('click', () => {
+          let current = Math.max(1, (parseInt(input.value, 10) || baseServings) - 1);
+          input.value = current.toString();
+          updateQuantities(current);
+          persist();
+        });
+
+        btnInc?.addEventListener('click', () => {
+          let current = Math.min(99, (parseInt(input.value, 10) || baseServings) + 1);
+          input.value = current.toString();
+          updateQuantities(current);
+          persist();
+        });
+
+        input.addEventListener('change', () => {
+          let val = parseInt(input.value, 10);
+          if (isNaN(val) || val < 1) val = 1;
+          input.value = val.toString();
+          updateQuantities(val);
+          persist();
+        });
       }
 
-      document.addEventListener('astro:page-load', initServingsScaler);
-      if (document.readyState !== 'loading') initServingsScaler();
-      else document.addEventListener('DOMContentLoaded', initServingsScaler);
+      let recipeKeyController: AbortController | null = null;
+
+      function initRecipeEscape() {
+        recipeKeyController?.abort();
+        if (!isRecipePage()) return;
+        recipeKeyController = new AbortController();
+
+        document.addEventListener(
+          'keydown',
+          (e) => {
+            if (e.key !== 'Escape' || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+            const servingsInput = document.getElementById('servings-input');
+            if (document.activeElement === servingsInput) {
+              (servingsInput as HTMLElement).blur();
+              return;
+            }
+            const backLink = document.querySelector<HTMLAnchorElement>('.back-link');
+            if (backLink) {
+              e.preventDefault();
+              backLink.click();
+            }
+          },
+          { signal: recipeKeyController.signal }
+        );
+      }
+
+      let wakeLock: WakeLockSentinel | null = null;
+      let wakeLockActive = false;
+      let onVisibilityChange: (() => void) | null = null;
+
+      function isRecipePage() {
+        return Boolean(document.getElementById('servings-input'));
+      }
+
+      async function acquireWakeLock() {
+        if (!wakeLockActive || !isRecipePage() || wakeLock) return;
+        try {
+          const sentinel = await navigator.wakeLock?.request('screen');
+          if (!sentinel) return;
+          if (!wakeLockActive || !isRecipePage()) {
+            sentinel.release().catch(() => {});
+            return;
+          }
+          wakeLock = sentinel;
+          wakeLock.addEventListener('release', () => {
+            if (wakeLock === sentinel) {
+              wakeLock = null;
+            }
+          });
+        } catch {
+          // Fail silently on unsupported browsers or permission denials
+        }
+      }
+
+      function releaseWakeLock() {
+        wakeLockActive = false;
+        if (onVisibilityChange) {
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+          onVisibilityChange = null;
+        }
+        if (wakeLock) {
+          const sentinel = wakeLock;
+          wakeLock = null;
+          sentinel.release().catch(() => {});
+        }
+      }
+
+      function initWakeLock() {
+        if (!isRecipePage()) return;
+        wakeLockActive = true;
+        if (!onVisibilityChange) {
+          onVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && isRecipePage()) {
+              void acquireWakeLock();
+            }
+          };
+          document.addEventListener('visibilitychange', onVisibilityChange);
+        }
+        void acquireWakeLock();
+      }
+
+      function onPageLoad() {
+        if (isRecipePage()) {
+          try {
+            sessionStorage.setItem('last-recipe-url', window.location.pathname);
+          } catch {}
+        }
+        initServingsScaler();
+        initWakeLock();
+        initRecipeEscape();
+      }
+
+      document.addEventListener('astro:page-load', onPageLoad);
+      document.addEventListener('astro:before-swap', () => {
+        releaseWakeLock();
+        recipeKeyController?.abort();
+        recipeKeyController = null;
+      });
+      if (document.readyState !== 'loading') onPageLoad();
+      else document.addEventListener('DOMContentLoaded', onPageLoad);
     </script>
   </body>
 </html>

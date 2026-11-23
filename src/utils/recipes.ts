@@ -30,3 +30,12 @@ export function extractSearchText(recipe: RecipeEntry): string {
 
   return `${recipe.frontmatter.title} ${ingredients}`.toLowerCase();
 }
+
+/** Generate a deterministic `view-transition-name` for a recipe title across index and detail pages. */
+export function titleTransitionName(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `recipe-title-${slug}`;
+}
