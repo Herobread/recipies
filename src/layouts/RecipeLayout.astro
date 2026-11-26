@@ -1,5 +1,6 @@
 ---
 import { ViewTransitions } from 'astro:transitions';
+import RecipeChoice from '../components/RecipeChoice.astro';
 import { titleTransitionName } from '../utils/recipes';
 
 const { frontmatter } = Astro.props;
@@ -426,6 +427,8 @@ const defaultServings = frontmatter.servings || 2;
       <slot />
     </main>
 
+    <RecipeChoice />
+
     <script>
       const STATE_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 
@@ -540,6 +543,7 @@ const defaultServings = frontmatter.servings || 2;
             persist();
           };
 
+          li.addEventListener('mousedown', (e) => e.preventDefault());
           li.addEventListener('click', toggle);
           li.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.key === 'Enter') {

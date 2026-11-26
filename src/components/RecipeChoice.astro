@@ -1,0 +1,474 @@
+<style is:global>
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  html,
+  body,
+  main {
+    overflow-anchor: none;
+  }
+
+  recipe-choice {
+    position: relative;
+    display: block;
+    padding: 0.35rem 0 0.35rem var(--content-indent);
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    overflow-anchor: none;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+
+  /* Seamlessly continue the preceding ingredients <ul> without negative margins */
+  ul:has(+ recipe-choice) {
+    margin-bottom: 0;
+  }
+
+  recipe-choice:has(+ :not(recipe-choice)) {
+    margin-bottom: 1.5rem;
+  }
+
+  .rc-check {
+    position: absolute;
+    left: 0;
+    top: 0.55rem;
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    border: 1px solid #CFC8BE;
+    border-radius: 1px;
+    background: transparent;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .rc-check:hover {
+    border-color: var(--text-muted);
+  }
+
+  .rc-check:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  recipe-choice.is-done {
+    opacity: 0.38;
+  }
+
+  recipe-choice.is-done .rc-check {
+    background-color: var(--text-primary);
+    border-color: var(--text-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='M3 7.2L5.8 10L11 4' stroke='%23FAFAF8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  recipe-choice.is-done .rc-label,
+  recipe-choice.is-done recipe-option.is-selected {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--text-muted);
+    text-decoration-skip-ink: none;
+    color: var(--text-muted);
+  }
+
+  .rc-header {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .rc-label {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .rc-hint {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .rc-options {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+    margin-top: 0.35rem;
+  }
+
+  recipe-option {
+    position: relative;
+    display: block;
+    padding: 0.22rem 0 0.22rem 1.35rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+
+  recipe-option::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.48rem;
+    width: 12px;
+    height: 12px;
+    border: 1px solid #CFC8BE;
+    border-radius: 50%;
+    background: transparent;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  recipe-choice[multiple] recipe-option::before {
+    border-radius: 1px;
+  }
+
+  recipe-option:hover {
+    color: var(--text-primary);
+  }
+
+  recipe-option:hover::before {
+    border-color: var(--text-muted);
+  }
+
+  recipe-option:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  recipe-choice.has-selection recipe-option:not(.is-selected) {
+    color: var(--text-muted);
+  }
+
+  recipe-choice.has-selection recipe-option:not(.is-selected)::before {
+    border-color: #DCD6CE;
+  }
+
+  recipe-option.is-selected {
+    color: var(--text-primary);
+  }
+
+  recipe-option.is-selected::before {
+    border-color: var(--accent);
+    background-color: var(--accent);
+    box-shadow: inset 0 0 0 2.5px var(--bg);
+  }
+
+  recipe-choice[multiple] recipe-option.is-selected::before {
+    box-shadow: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 6.2L5 8.7L9.5 3.5' stroke='%23FAFAF8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  recipe-selected.has-value {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+</style>
+
+<script>
+  function slugify(text: string, fallbackPrefix: string, fallbackIndex: number): string {
+    const slug = text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return slug || `${fallbackPrefix}-${fallbackIndex}`;
+  }
+
+  function getGroupParamKey(group: Element, allGroups: Element[]): string {
+    const idx = allGroups.indexOf(group);
+    const base = slugify(group.getAttribute('label') || '', 'choice', idx);
+    const sameBaseCount = allGroups
+      .slice(0, idx)
+      .filter((g, i) => slugify(g.getAttribute('label') || '', 'choice', i) === base).length;
+    return sameBaseCount > 0 ? `${base}-${sameBaseCount + 1}` : base;
+  }
+
+  function getOptionValue(opt: Element, idx: number, allOptions: Element[]): string {
+    const explicit = opt.getAttribute('value');
+    if (explicit) return slugify(explicit, 'option', idx);
+
+    const base = slugify(opt.textContent || '', 'option', idx);
+    const sameBaseCount = allOptions
+      .slice(0, idx)
+      .filter((o, i) => !o.getAttribute('value') && slugify(o.textContent || '', 'option', i) === base).length;
+    return sameBaseCount > 0 ? `${base}-${sameBaseCount + 1}` : base;
+  }
+
+  function getStorageKey(): string {
+    return `recipe-choices:${window.location.pathname}`;
+  }
+
+  function loadChoicesFromStorage(): Record<string, string[]> {
+    try {
+      const raw = localStorage.getItem(getStorageKey());
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const result: Record<string, string[]> = {};
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed)) {
+          if (Array.isArray(v)) {
+            result[k] = v.filter((item): item is string => typeof item === 'string' && item.length > 0);
+          }
+        }
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  }
+
+  function saveChoiceToStorage(paramKey: string, selectedValues: string[]) {
+    try {
+      const current = loadChoicesFromStorage();
+      if (selectedValues.length === 0) {
+        delete current[paramKey];
+      } else {
+        current[paramKey] = selectedValues;
+      }
+      if (Object.keys(current).length === 0) {
+        localStorage.removeItem(getStorageKey());
+        return;
+      }
+      localStorage.setItem(getStorageKey(), JSON.stringify(current));
+    } catch {
+      // Ignore storage quota or private-mode restrictions
+    }
+  }
+
+  function loadChoiceFromUrl(paramKey: string): string[] | null {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has(paramKey)) return null;
+      const raw = params.get(paramKey) || '';
+      return raw
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
+    } catch {
+      return null;
+    }
+  }
+
+  function saveChoiceToUrl(paramKey: string, selectedValues: string[]) {
+    try {
+      const url = new URL(window.location.href);
+      if (selectedValues.length === 0) {
+        url.searchParams.delete(paramKey);
+      } else {
+        url.searchParams.set(paramKey, selectedValues.join(','));
+      }
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState(window.history.state, '', next);
+    } catch {
+      // Ignore history API errors
+    }
+  }
+
+  const initializedGroups = new WeakSet<HTMLElement>();
+
+  class RecipeChoiceElement extends HTMLElement {
+    connectedCallback() {
+      if (initializedGroups.has(this)) return;
+      initializedGroups.add(this);
+
+      const options = Array.from(this.querySelectorAll('recipe-option')) as HTMLElement[];
+      if (options.length === 0) return;
+
+      const isMultiple = this.hasAttribute('multiple');
+      const label = this.getAttribute('label') || '';
+      const hint = this.getAttribute('hint') || (isMultiple ? 'pick any' : 'pick one');
+
+      let checkbox = this.querySelector('.rc-check') as HTMLButtonElement | null;
+      let header = this.querySelector('.rc-header') as HTMLDivElement | null;
+      let optionsWrapper = this.querySelector('.rc-options') as HTMLDivElement | null;
+
+      if (!checkbox || !optionsWrapper) {
+        checkbox = document.createElement('button');
+        checkbox.type = 'button';
+        checkbox.className = 'rc-check';
+        checkbox.setAttribute('role', 'checkbox');
+        checkbox.setAttribute('aria-checked', 'false');
+        checkbox.setAttribute('aria-label', label ? `Mark ${label} done` : 'Mark ingredient done');
+
+        header = document.createElement('div');
+        header.className = 'rc-header';
+
+        if (label) {
+          const labelEl = document.createElement('span');
+          labelEl.className = 'rc-label';
+          labelEl.textContent = label;
+          header.appendChild(labelEl);
+        }
+
+        if (hint) {
+          const hintEl = document.createElement('span');
+          hintEl.className = 'rc-hint';
+          hintEl.textContent = label ? `— ${hint}` : hint;
+          header.appendChild(hintEl);
+        }
+
+        optionsWrapper = document.createElement('div');
+        optionsWrapper.className = 'rc-options';
+        optionsWrapper.setAttribute('role', isMultiple ? 'group' : 'radiogroup');
+        if (label) optionsWrapper.setAttribute('aria-label', label);
+
+        options.forEach((opt) => optionsWrapper!.appendChild(opt));
+
+        this.appendChild(checkbox);
+        if (label || hint) this.appendChild(header);
+        this.appendChild(optionsWrapper);
+      }
+
+      const allGroups = Array.from(document.querySelectorAll('recipe-choice'));
+      const paramKey = getGroupParamKey(this, allGroups);
+      const optionValues = options.map((opt, idx) => getOptionValue(opt, idx, options));
+      const validValues = new Set(optionValues);
+      const urlValues = loadChoiceFromUrl(paramKey);
+      const storedValues = loadChoicesFromStorage()[paramKey] ?? [];
+      const initialValues = urlValues !== null ? urlValues : storedValues;
+
+      let selectedSet = new Set<string>();
+      let isDone = false;
+
+      const applyDone = (done: boolean) => {
+        isDone = done;
+        this.classList.toggle('is-done', done);
+        checkbox.setAttribute('aria-checked', done ? 'true' : 'false');
+      };
+
+      const applySelection = (nextValues: string[], persist: boolean) => {
+        const nextSet = new Set(nextValues.filter((v) => validValues.has(v)));
+        // Preserve option order in URL
+        const ordered = optionValues.filter((v) => nextSet.has(v));
+        selectedSet = new Set(ordered);
+        this.classList.toggle('has-selection', selectedSet.size > 0);
+        options.forEach((opt, idx) => {
+          const isSelected = selectedSet.has(optionValues[idx]);
+          opt.classList.toggle('is-selected', isSelected);
+          opt.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+        });
+        if (persist) {
+          saveChoiceToUrl(paramKey, ordered);
+          saveChoiceToStorage(paramKey, ordered);
+        }
+        document.dispatchEvent(
+          new CustomEvent('recipe-choice-change', {
+            detail: { key: paramKey, values: ordered },
+          })
+        );
+      };
+
+      const toggleDone = () => applyDone(!isDone);
+      checkbox.addEventListener('mousedown', (e) => e.preventDefault());
+      checkbox.addEventListener('click', toggleDone);
+      header?.addEventListener('click', toggleDone);
+
+      options.forEach((opt, idx) => {
+        const optValue = optionValues[idx];
+        opt.setAttribute('role', isMultiple ? 'checkbox' : 'radio');
+        opt.setAttribute('tabindex', '0');
+        opt.setAttribute('aria-checked', 'false');
+
+        const toggleOption = () => {
+          if (isMultiple) {
+            const next = new Set(selectedSet);
+            if (next.has(optValue)) next.delete(optValue);
+            else next.add(optValue);
+            applySelection(Array.from(next), true);
+          } else {
+            applySelection(selectedSet.has(optValue) ? [] : [optValue], true);
+          }
+        };
+
+        opt.addEventListener('mousedown', (e) => e.preventDefault());
+        opt.addEventListener('click', toggleOption);
+        opt.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            toggleOption();
+          }
+        });
+      });
+
+      if (initialValues.length > 0) {
+        const resolved = isMultiple ? initialValues : [initialValues[0]];
+        applySelection(resolved, false);
+        if (urlValues === null) {
+          saveChoiceToUrl(paramKey, Array.from(selectedSet));
+        }
+      }
+    }
+  }
+
+  function formatSelectedList(items: string[]): string {
+    if (items.length === 0) return '';
+    if (items.length === 1) return items[0];
+    if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  }
+
+  class RecipeSelectedElement extends HTMLElement {
+    private onChoiceChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ key?: string }>).detail;
+      const targetKey = this.getAttribute('for') || '';
+      if (!detail?.key || detail.key === targetKey) {
+        this.renderSelection();
+      }
+    };
+
+    connectedCallback() {
+      this.renderSelection();
+      document.addEventListener('recipe-choice-change', this.onChoiceChange);
+    }
+
+    disconnectedCallback() {
+      document.removeEventListener('recipe-choice-change', this.onChoiceChange);
+    }
+
+    private renderSelection() {
+      const targetKey = this.getAttribute('for') || '';
+      const fallback = this.getAttribute('fallback') || '';
+      const allGroups = Array.from(document.querySelectorAll('recipe-choice'));
+      const matchingGroup = allGroups.find((g) => getGroupParamKey(g, allGroups) === targetKey);
+
+      if (!matchingGroup) {
+        this.classList.remove('has-value');
+        this.textContent = fallback;
+        return;
+      }
+
+      const selectedOpts = Array.from(matchingGroup.querySelectorAll('recipe-option.is-selected')) as HTMLElement[];
+      const texts = selectedOpts
+        .map((opt) => (opt.innerText || opt.textContent || '').replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+
+      if (texts.length === 0) {
+        this.classList.remove('has-value');
+        this.textContent = fallback;
+        return;
+      }
+
+      this.classList.add('has-value');
+      this.textContent = formatSelectedList(texts);
+    }
+  }
+
+  if (!customElements.get('recipe-choice')) {
+    customElements.define('recipe-choice', RecipeChoiceElement);
+  }
+  if (!customElements.get('recipe-selected')) {
+    customElements.define('recipe-selected', RecipeSelectedElement);
+  }
+</script>
